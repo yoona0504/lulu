@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>루루봇 대시보드</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="dashboard">
+      <!-- 사이드바 -->
+      <aside class="sidebar">
+        <h2>LULUBOT</h2>
+        <ul>
+          <li class="active">대시보드</li>
+          <li>감정 분석</li>
+          <li>성격 특성</li>
+          <li>대화 기록</li>
+          <li>설정</li>
+        </ul>
+        <div class="version">v1.2.3</div>
+      </aside>
+
+      <!-- 콘텐츠 -->
+      <main class="content">
+        <header>
+          <h1>루루봇 대시보드</h1>
+          <div class="user">관리자</div>
+        </header>
+
+        <!-- 대시보드 -->
+        <section class="page" id="dashboardPage" style="display: block;">
+          <!-- <section class="cards">
+            <div class="card">
+              <h3>😊 현재 감정</h3><p>
+                행복<br /><span class="small">3시간 연속 유지</span>
+              </p>
+            </div>
+            <div class="card">
+              <h3>💬 오늘의 대화</h3><p>
+                24<br /><span class="small">어제보다 +5</span>
+              </p>
+            </div>
+            <div class="card">
+              <h3>🎯 얼굴 인식 정확도</h3><p>
+                98%<br /><span class="small">지난주보다 +2%</span>
+              </p>
+            </div>
+            <div class="card">
+              <h3>🔋 배터리 상태</h3><p>
+                78%<br /><span class="small">약 5시간 남음</span>
+              </p>
+            </div>
+          </section>
+
+          <section class="charts">
+            <div class="chart-box">
+              <h3>최근 감정 추이</h3>
+              <canvas id="emotionTrend"></canvas>
+            </div>
+            <div class="chart-box">
+              <h3>성격 특성</h3>
+              <canvas id="personalityChart"></canvas>
+            </div>
+          </section> -->
+        </section>
+
+        <section class="cards" id="cardContainer"></section>
+
+        <!-- 감정 분석 -->
+        <section class="page" id="emotionPage" style="display: none;">
+          <h3>실시간 감정 분석</h3>
+          <video id="video" width="400" autoplay playsinline></video><br />
+          <button id="captureBtn" onclick="capture()" disabled>루루봇에게 감정 보여주기</button><br />
+          <img id="photo" /><br />
+          <p id="response"></p>
+          <canvas id="emotionChart"></canvas>
+        </section>
+
+        <!-- 성격 특성 -->
+        <section class="page" id="personalityPage" style="display: none;">
+          <h3>성격 특성 분석 결과</h3>
+          <canvas id="personalityChart" style="max-width: 400px; width: 100%; height: auto;"></canvas>
+        </section>
+
+        <!-- 대화 기록 -->
+        <section class="page" id="chatLogPage" style="display: none;">
+          <h3>최근 대화</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>시간</th>
+                <th>질문</th>
+                <th>응답</th>
+                <th>감정</th>
+              </tr>
+            </thead>
+            <tbody id="logTableBody">
+              <!-- JS에서 자동 추가 -->
+            </tbody>
+          </table>
+        </section>
+
+        <!-- 대화 시작 -->
+        <div class="chat-input">
+          <input type="text" id="userMessage" placeholder="루루봇에게 말 걸기..." />
+          <button onclick="sendUserMessage()">전송</button>
+        </div>
+
+        <!-- 설정 -->
+        <section class="page" id="settingsPage" style="display: none;">
+          <h3>설정</h3>
+          <label><input type="checkbox" checked />자동 감정 분석 활성화</label>
+        </section>
+      </main>
+    </div>
+
+    <!-- JS 삽입 -->
+    <script>
+      // 페이지 전환
+      document.addEventListener('DOMContentLoaded', () => {
+        const menuItems = document.querySelectorAll('.sidebar li')
+        const pages = document.querySelectorAll('.page')
+        const pageIds = ['dashboardPage', 'emotionPage', 'personalityPage', 'chatLogPage', 'settingsPage']
+      
+        menuItems.forEach((item, index) => {
+          item.addEventListener('click', () => {
+            pages.forEach((p) => (p.style.display = 'none'))
+            document.getElementById(pageIds[index]).style.display = 'block'
+      
+            menuItems.forEach((i) => i.classList.remove('active'))
+            item.classList.add('active')
+          })
+        })
+      
+        // 성격 특성 차트
+        const ctx = document.getElementById('personalityChart').getContext('2d')
+        new Chart(ctx, {
+          type: 'radar',
+          data: {
+            labels: ['외향성', '친화성', '성실성', '감정 안정성', '개방성'],
+            datasets: [
+              {
+                label: '루루봇 성격 점수',
+                data: [72, 88, 67, 53, 81],
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 2
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              r: {
+                suggestedMin: 0,
+                suggestedMax: 100
+              }
+            }
+          }
+        })
+      })
+      
+      // 웹캠 연동
+      navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+        const video = document.getElementById('video')
+        video.srcObject = stream
+        video.onloadedmetadata = () => {
+          document.getElementById('captureBtn').disabled = false
+        }
+      })
+      
+      // 캡처 및 분석
+      function capture() {
+        const video = document.getElementById('video')
+        if (video.videoWidth === 0 || video.videoHeight === 0) {
+          alert('카메라 준비 중입니다.')
+          return
+        }
+      
+        const canvas = document.createElement('canvas')
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        canvas.getContext('2d').drawImage(video, 0, 0)
+        const dataUrl = canvas.toDataURL('image/jpeg')
+        document.getElementById('photo').src = dataUrl
+      
+        fetch('/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl })
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.error) {
+              alert(data.error)
+              return
+            }
+      
+            document.getElementById('response').innerText = data.response
+      
+            // 감정 차트
+            const ctx = document.getElementById('emotionChart').getContext('2d')
+            const labels = Object.keys(data.emotions)
+            const values = Object.values(data.emotions)
+      
+            if (window.emotionChart) window.emotionChart.destroy()
+            window.emotionChart = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: labels,
+                datasets: [
+                  {
+                    label: '감정 확률 (%)',
+                    data: values,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                  }
+                ]
+              },
+              options: {
+                scales: {
+                  y: { beginAtZero: true, max: 100 }
+                }
+              }
+            })
+      
+            // 대화 기록 추가
+            const logTable = document.getElementById('logTableBody')
+            const row = document.createElement('tr')
+            row.innerHTML = `
+                      <td>${new Date().toLocaleTimeString()}</td>
+                      <td>-</td>
+                      <td>${data.response}</td>
+                      <td>${data.dominant}</td>
+                    `
+            logTable.appendChild(row)
+          })
+      }
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </body>
+</html>
